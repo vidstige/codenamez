@@ -15,15 +15,11 @@ def index():
 def serveStaticResource(resource):
     return send_from_directory('static/', resource)
 
-#{ "prefix": ["abc"], "suffix": [ "abc"] }
-
 def _prefixes(s):
-	if s is None: return []
-	return s['prefix'] or []
+	return s['prefixes'] or []
 
 def _suffixes(s):
-	if s is None: return []
-	return s['suffix'] or []
+	return s['suffixes'] or []
 
 def create_name(db, serie):
 	series_collection = db.series
@@ -32,8 +28,11 @@ def create_name(db, serie):
 	versions_collection = db[versions_collection_name]
 
 	s = db.series.find_one({'serie': serie})
+	if s is None:
+		raise Exception('No such serie: "{}"'.format(serie))
+
 	for prefix in _prefixes(s):
-		for prefix in _suffixes(s):
+		for suffix in _suffixes(s):
 			name = "{}-{}".format(prefix, suffix)
     		document = versions_collection.find_one({'name': name})
     		if document is None:
@@ -57,6 +56,19 @@ def get_codename(serie, version):
 	versions_collection.insert_one({'version': version, 'name': name})
 
 	return name
+
+@app.route('/add-serie/', methods=['POST'])
+def add_serie():
+	conn = pymongo.MongoClient(os.environ['OPENSHIFT_MONGODB_DB_URL'])
+	db = conn[os.environ['OPENSHIFT_APP_NAME']]
+
+	db.series.insert({
+			'serie': request.form['serie'],
+			'prefixes': request.form['prefixes'].split(),
+			'suffixes': request.form['suffixes'].split()
+		})
+
+	return "Serie added. Don't refresh page."
 
 @app.route("/test")
 def test():
