@@ -57,6 +57,20 @@ def get_codename(serie, version):
 
 	return name
 
+@app.route('/lookup-codename/<serie>/<name>')
+def lookup_codename(serie, name):
+	conn = pymongo.MongoClient(os.environ['OPENSHIFT_MONGODB_DB_URL'])
+	db = conn[os.environ['OPENSHIFT_APP_NAME']]
+
+	versions_collection_name = "{}-versions".format(serie)
+	versions_collection = db[versions_collection_name]
+
+	document = versions_collection.find_one({'name': name})
+	if (document is None):
+		return "Code name '{}' not found".format(name), 404
+	
+	return document['version']
+
 @app.route('/add-serie/', methods=['POST'])
 def add_serie():
 	conn = pymongo.MongoClient(os.environ['OPENSHIFT_MONGODB_DB_URL'])
